@@ -1,5 +1,7 @@
 const { Client, GatewayIntentBits } = require('discord.js');
 
+console.log("NEUER CODE AKTIV"); // 🔥 TEST
+
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -55,43 +57,42 @@ client.on('interactionCreate', async interaction => {
     // GIVEAWAY
     if (interaction.commandName === 'giveaway') {
 
-    const dauer = interaction.options.getInteger('dauer');
-    const preis = interaction.options.getString('preis');
+        const dauer = interaction.options.getInteger('dauer');
+        const preis = interaction.options.getString('preis');
 
-    await interaction.deferReply();
+        await interaction.deferReply(); // 🔥 verhindert Timeout
 
-    const message = await interaction.editReply({
-        content: `🎉 **GIVEAWAY** 🎉\nPreis: **${preis}**\nReagiere mit 🎉 um teilzunehmen!\nEndet in ${dauer} Sekunden.`
-    });
+        const message = await interaction.editReply({
+            content: `🎉 **GIVEAWAY** 🎉\nPreis: **${preis}**\nReagiere mit 🎉 um teilzunehmen!\nEndet in ${dauer} Sekunden.`
+        });
 
-    await message.react("🎉");
+        await message.react("🎉");
 
-    setTimeout(async () => {
-        try {
-            const fetchedMessage = await interaction.channel.messages.fetch(message.id);
+        setTimeout(async () => {
+            try {
+                const fetchedMessage = await interaction.channel.messages.fetch(message.id);
+                const reaction = fetchedMessage.reactions.cache.get("🎉");
 
-            const reaction = fetchedMessage.reactions.cache.get("🎉");
+                if (!reaction) {
+                    return interaction.channel.send("Keine Teilnehmer ❌");
+                }
 
-            if (!reaction) {
-                return interaction.channel.send("Keine Teilnehmer ❌");
+                const users = await reaction.users.fetch();
+                const validUsers = users.filter(user => !user.bot);
+
+                if (validUsers.size === 0) {
+                    return interaction.channel.send("Niemand hat teilgenommen 😢");
+                }
+
+                const winner = validUsers.random();
+
+                interaction.channel.send(`🎉 Gewinner: ${winner} hat **${preis}** gewonnen!`);
+            } catch (err) {
+                console.error(err);
+                interaction.channel.send("Fehler beim Auslosen ❌");
             }
-
-            const users = await reaction.users.fetch();
-            const validUsers = users.filter(user => !user.bot);
-
-            if (validUsers.size === 0) {
-                return interaction.channel.send("Niemand hat teilgenommen 😢");
-            }
-
-            const winner = validUsers.random();
-
-            interaction.channel.send(`🎉 Gewinner: ${winner} hat **${preis}** gewonnen!`);
-        } catch (err) {
-            console.error(err);
-            interaction.channel.send("Fehler beim Auslosen ❌");
-        }
-    }, dauer * 1000);
-}
+        }, dauer * 1000);
+    }
 
 });
 
