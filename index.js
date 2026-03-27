@@ -58,7 +58,7 @@ client.on('interactionCreate', async interaction => {
     const dauer = interaction.options.getInteger('dauer');
     const preis = interaction.options.getString('preis');
 
-    await interaction.deferReply(); // 🔥 WICHTIG
+    await interaction.deferReply();
 
     const message = await interaction.editReply({
         content: `🎉 **GIVEAWAY** 🎉\nPreis: **${preis}**\nReagiere mit 🎉 um teilzunehmen!\nEndet in ${dauer} Sekunden.`
@@ -67,18 +67,29 @@ client.on('interactionCreate', async interaction => {
     await message.react("🎉");
 
     setTimeout(async () => {
-        const fetchedMessage = await message.fetch();
-        const users = await fetchedMessage.reactions.cache.get("🎉").users.fetch();
+        try {
+            const fetchedMessage = await interaction.channel.messages.fetch(message.id);
 
-        const validUsers = users.filter(user => !user.bot);
+            const reaction = fetchedMessage.reactions.cache.get("🎉");
 
-        if (validUsers.size === 0) {
-            return interaction.channel.send("Niemand hat teilgenommen 😢");
+            if (!reaction) {
+                return interaction.channel.send("Keine Teilnehmer ❌");
+            }
+
+            const users = await reaction.users.fetch();
+            const validUsers = users.filter(user => !user.bot);
+
+            if (validUsers.size === 0) {
+                return interaction.channel.send("Niemand hat teilgenommen 😢");
+            }
+
+            const winner = validUsers.random();
+
+            interaction.channel.send(`🎉 Gewinner: ${winner} hat **${preis}** gewonnen!`);
+        } catch (err) {
+            console.error(err);
+            interaction.channel.send("Fehler beim Auslosen ❌");
         }
-
-        const winner = validUsers.random();
-
-        interaction.channel.send(`🎉 Gewinner: ${winner} hat **${preis}** gewonnen!`);
     }, dauer * 1000);
 }
 
