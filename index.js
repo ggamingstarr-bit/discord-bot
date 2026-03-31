@@ -8,9 +8,9 @@ const {
     PermissionsBitField
 } = require('discord.js');
 
-console.log("NEUER CODE AKTIV");
+console.log("BOT STARTET...");
 
-// 🔥 HIER DEINE KATEGORIE ID EINSETZEN
+// 🔥 HIER DEINE SUPPORT KATEGORIE ID EINSETZEN
 const SUPPORT_CATEGORY_ID = "1488522141598220288";
 
 const client = new Client({
@@ -28,17 +28,40 @@ client.once("ready", () => {
 
 client.on('interactionCreate', async interaction => {
 
-    // SLASH COMMANDS
+    // ===== SLASH COMMANDS =====
     if (interaction.isChatInputCommand()) {
 
-        // TEST
         if (interaction.commandName === 'test') {
-            await interaction.reply('Bot funktioniert ✅');
+            return interaction.reply('Bot funktioniert ✅');
         }
 
-        // HALLO
         if (interaction.commandName === 'hallo') {
-            await interaction.reply(`Hallo ${interaction.user.username} 👋`);
+            return interaction.reply(`Hallo ${interaction.user.username} 👋`);
+        }
+
+        // POLL
+        if (interaction.commandName === 'poll') {
+
+            const frage = interaction.options.getString('frage');
+            const option1 = interaction.options.getString('option1');
+            const option2 = interaction.options.getString('option2');
+
+            const button1 = new ButtonBuilder()
+                .setCustomId('vote_1')
+                .setLabel(option1)
+                .setStyle(ButtonStyle.Primary);
+
+            const button2 = new ButtonBuilder()
+                .setCustomId('vote_2')
+                .setLabel(option2)
+                .setStyle(ButtonStyle.Success);
+
+            const row = new ActionRowBuilder().addComponents(button1, button2);
+
+            return interaction.reply({
+                content: `📊 **Umfrage**\n${frage}`,
+                components: [row]
+            });
         }
 
         // RENAME ROLE
@@ -59,14 +82,14 @@ client.on('interactionCreate', async interaction => {
                 const oldName = role.name;
                 await role.setName(newName);
 
-                await interaction.reply(`Rolle **${oldName}** → **${newName}** geändert ✅`);
+                return interaction.reply(`Rolle **${oldName}** → **${newName}** geändert ✅`);
             } catch (error) {
                 console.error(error);
-                await interaction.reply("Ich darf deine Rolle nicht ändern ❌");
+                return interaction.reply("Ich darf deine Rolle nicht ändern ❌");
             }
         }
 
-        // GIVEAWAY (MINUTEN)
+        // GIVEAWAY
         if (interaction.commandName === 'giveaway') {
 
             const dauerMinuten = interaction.options.getInteger('dauer');
@@ -103,7 +126,7 @@ client.on('interactionCreate', async interaction => {
                     interaction.channel.send(`🎉 Gewinner: ${winner} hat **${preis}** gewonnen!`);
                 } catch (err) {
                     console.error(err);
-                    interaction.channel.send("Fehler beim Auslosen ❌");
+                    interaction.channel.send("Fehler ❌");
                 }
             }, dauerMs);
         }
@@ -118,17 +141,26 @@ client.on('interactionCreate', async interaction => {
 
             const row = new ActionRowBuilder().addComponents(button);
 
-            await interaction.reply({
+            return interaction.reply({
                 content: 'Klicke auf den Button um ein Ticket zu erstellen!',
                 components: [row]
             });
         }
     }
 
-    // BUTTONS
+    // ===== BUTTONS =====
     if (interaction.isButton()) {
 
-        // 🎫 Ticket erstellen
+        // POLL
+        if (interaction.customId === 'vote_1') {
+            return interaction.reply({ content: "Du hast Option 1 gewählt ✅", ephemeral: true });
+        }
+
+        if (interaction.customId === 'vote_2') {
+            return interaction.reply({ content: "Du hast Option 2 gewählt ✅", ephemeral: true });
+        }
+
+        // TICKET ERSTELLEN
         if (interaction.customId === 'create_ticket') {
 
             const channel = await interaction.guild.channels.create({
@@ -160,12 +192,12 @@ client.on('interactionCreate', async interaction => {
             });
 
             channel.send({
-                content: `Hallo ${interaction.user}, beschreibe dein Problem.\nDrücke den Button um das Ticket zu schließen.`,
+                content: `Hallo ${interaction.user}, beschreibe dein Problem.`,
                 components: [row]
             });
         }
 
-        // 🔒 Ticket schließen
+        // TICKET SCHLIESSEN
         if (interaction.customId === 'close_ticket') {
 
             await interaction.reply("Ticket wird geschlossen...");
