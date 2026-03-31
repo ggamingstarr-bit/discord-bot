@@ -10,6 +10,9 @@ const {
 
 console.log("NEUER CODE AKTIV");
 
+// 🔥 HIER DEINE KATEGORIE ID EINSETZEN
+const SUPPORT_CATEGORY_ID = "1488522141598220288";
+
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -122,14 +125,16 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // BUTTON HANDLER
+    // BUTTONS
     if (interaction.isButton()) {
 
+        // 🎫 Ticket erstellen
         if (interaction.customId === 'create_ticket') {
 
             const channel = await interaction.guild.channels.create({
                 name: `ticket-${interaction.user.username}`,
                 type: ChannelType.GuildText,
+                parent: SUPPORT_CATEGORY_ID,
                 permissionOverwrites: [
                     {
                         id: interaction.guild.id,
@@ -142,12 +147,32 @@ client.on('interactionCreate', async interaction => {
                 ]
             });
 
+            const closeButton = new ButtonBuilder()
+                .setCustomId('close_ticket')
+                .setLabel('🔒 Ticket schließen')
+                .setStyle(ButtonStyle.Danger);
+
+            const row = new ActionRowBuilder().addComponents(closeButton);
+
             await interaction.reply({
                 content: `Dein Ticket: ${channel}`,
                 ephemeral: true
             });
 
-            channel.send(`Hallo ${interaction.user}, das Team wird sich melden!`);
+            channel.send({
+                content: `Hallo ${interaction.user}, beschreibe dein Problem.\nDrücke den Button um das Ticket zu schließen.`,
+                components: [row]
+            });
+        }
+
+        // 🔒 Ticket schließen
+        if (interaction.customId === 'close_ticket') {
+
+            await interaction.reply("Ticket wird geschlossen...");
+
+            setTimeout(() => {
+                interaction.channel.delete();
+            }, 3000);
         }
     }
 
