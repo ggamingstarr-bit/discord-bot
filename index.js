@@ -57,42 +57,44 @@ client.on('interactionCreate', async interaction => {
     // GIVEAWAY
     if (interaction.commandName === 'giveaway') {
 
-        const dauer = interaction.options.getInteger('dauer');
-        const preis = interaction.options.getString('preis');
+    const dauerMinuten = interaction.options.getInteger('dauer');
+    const preis = interaction.options.getString('preis');
 
-        await interaction.deferReply(); // 🔥 verhindert Timeout
+    const dauerMs = dauerMinuten * 60 * 1000; // 🔥 Minuten → Millisekunden
 
-        const message = await interaction.editReply({
-            content: `🎉 **GIVEAWAY** 🎉\nPreis: **${preis}**\nReagiere mit 🎉 um teilzunehmen!\nEndet in ${dauer} Sekunden.`
-        });
+    await interaction.deferReply();
 
-        await message.react("🎉");
+    const message = await interaction.editReply({
+        content: `🎉 **GIVEAWAY** 🎉\nPreis: **${preis}**\nReagiere mit 🎉 um teilzunehmen!\nEndet in ${dauerMinuten} Minuten.`
+    });
 
-        setTimeout(async () => {
-            try {
-                const fetchedMessage = await interaction.channel.messages.fetch(message.id);
-                const reaction = fetchedMessage.reactions.cache.get("🎉");
+    await message.react("🎉");
 
-                if (!reaction) {
-                    return interaction.channel.send("Keine Teilnehmer ❌");
-                }
+    setTimeout(async () => {
+        try {
+            const fetchedMessage = await interaction.channel.messages.fetch(message.id);
+            const reaction = fetchedMessage.reactions.cache.get("🎉");
 
-                const users = await reaction.users.fetch();
-                const validUsers = users.filter(user => !user.bot);
-
-                if (validUsers.size === 0) {
-                    return interaction.channel.send("Niemand hat teilgenommen 😢");
-                }
-
-                const winner = validUsers.random();
-
-                interaction.channel.send(`🎉 Gewinner: ${winner} hat **${preis}** gewonnen!`);
-            } catch (err) {
-                console.error(err);
-                interaction.channel.send("Fehler beim Auslosen ❌");
+            if (!reaction) {
+                return interaction.channel.send("Keine Teilnehmer ❌");
             }
-        }, dauer * 1000);
-    }
+
+            const users = await reaction.users.fetch();
+            const validUsers = users.filter(user => !user.bot);
+
+            if (validUsers.size === 0) {
+                return interaction.channel.send("Niemand hat teilgenommen 😢");
+            }
+
+            const winner = validUsers.random();
+
+            interaction.channel.send(`🎉 Gewinner: ${winner} hat **${preis}** gewonnen!`);
+        } catch (err) {
+            console.error(err);
+            interaction.channel.send("Fehler beim Auslosen ❌");
+        }
+    }, dauerMs);
+}
 
 });
 
