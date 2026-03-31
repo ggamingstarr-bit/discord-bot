@@ -1,6 +1,14 @@
-const { Client, GatewayIntentBits } = require('discord.js');
+const {
+    Client,
+    GatewayIntentBits,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle,
+    ChannelType,
+    PermissionsBitField
+} = require('discord.js');
 
-console.log("NEUER CODE AKTIV"); // 🔥 TEST
+console.log("NEUER CODE AKTIV");
 
 const client = new Client({
     intents: [
@@ -17,84 +25,131 @@ client.once("ready", () => {
 
 client.on('interactionCreate', async interaction => {
 
-    if (!interaction.isChatInputCommand()) return;
+    // SLASH COMMANDS
+    if (interaction.isChatInputCommand()) {
 
-    // TEST
-    if (interaction.commandName === 'test') {
-        await interaction.reply('Bot funktioniert ✅');
-    }
-
-    // HALLO
-    if (interaction.commandName === 'hallo') {
-        await interaction.reply(`Hallo ${interaction.user.username} 👋`);
-    }
-
-    // RENAME ROLE
-    if (interaction.commandName === 'renamerole') {
-
-        const newName = interaction.options.getString('name');
-
-        const role = interaction.member.roles.cache
-            .filter(r => r.name !== "@everyone")
-            .sort((a, b) => b.position - a.position)
-            .first();
-
-        if (!role) {
-            return interaction.reply("Ich konnte deine Rolle nicht finden ❌");
+        // TEST
+        if (interaction.commandName === 'test') {
+            await interaction.reply('Bot funktioniert ✅');
         }
 
-        try {
-            const oldName = role.name;
-            await role.setName(newName);
-
-            await interaction.reply(`Rolle **${oldName}** → **${newName}** geändert ✅`);
-        } catch (error) {
-            console.error(error);
-            await interaction.reply("Ich darf deine Rolle nicht ändern ❌");
+        // HALLO
+        if (interaction.commandName === 'hallo') {
+            await interaction.reply(`Hallo ${interaction.user.username} 👋`);
         }
-    }
 
-    // GIVEAWAY
-    if (interaction.commandName === 'giveaway') {
+        // RENAME ROLE
+        if (interaction.commandName === 'renamerole') {
 
-    const dauerMinuten = interaction.options.getInteger('dauer');
-    const preis = interaction.options.getString('preis');
+            const newName = interaction.options.getString('name');
 
-    const dauerMs = dauerMinuten * 60 * 1000; // 🔥 Minuten → Millisekunden
+            const role = interaction.member.roles.cache
+                .filter(r => r.name !== "@everyone")
+                .sort((a, b) => b.position - a.position)
+                .first();
 
-    await interaction.deferReply();
-
-    const message = await interaction.editReply({
-        content: `🎉 **GIVEAWAY** 🎉\nPreis: **${preis}**\nReagiere mit 🎉 um teilzunehmen!\nEndet in ${dauerMinuten} Minuten.`
-    });
-
-    await message.react("🎉");
-
-    setTimeout(async () => {
-        try {
-            const fetchedMessage = await interaction.channel.messages.fetch(message.id);
-            const reaction = fetchedMessage.reactions.cache.get("🎉");
-
-            if (!reaction) {
-                return interaction.channel.send("Keine Teilnehmer ❌");
+            if (!role) {
+                return interaction.reply("Ich konnte deine Rolle nicht finden ❌");
             }
 
-            const users = await reaction.users.fetch();
-            const validUsers = users.filter(user => !user.bot);
+            try {
+                const oldName = role.name;
+                await role.setName(newName);
 
-            if (validUsers.size === 0) {
-                return interaction.channel.send("Niemand hat teilgenommen 😢");
+                await interaction.reply(`Rolle **${oldName}** → **${newName}** geändert ✅`);
+            } catch (error) {
+                console.error(error);
+                await interaction.reply("Ich darf deine Rolle nicht ändern ❌");
             }
-
-            const winner = validUsers.random();
-
-            interaction.channel.send(`🎉 Gewinner: ${winner} hat **${preis}** gewonnen!`);
-        } catch (err) {
-            console.error(err);
-            interaction.channel.send("Fehler beim Auslosen ❌");
         }
-    }, dauerMs);
-}
+
+        // GIVEAWAY (MINUTEN)
+        if (interaction.commandName === 'giveaway') {
+
+            const dauerMinuten = interaction.options.getInteger('dauer');
+            const preis = interaction.options.getString('preis');
+
+            const dauerMs = dauerMinuten * 60 * 1000;
+
+            await interaction.deferReply();
+
+            const message = await interaction.editReply({
+                content: `🎉 **GIVEAWAY** 🎉\nPreis: **${preis}**\nReagiere mit 🎉 um teilzunehmen!\nEndet in ${dauerMinuten} Minuten.`
+            });
+
+            await message.react("🎉");
+
+            setTimeout(async () => {
+                try {
+                    const fetchedMessage = await interaction.channel.messages.fetch(message.id);
+                    const reaction = fetchedMessage.reactions.cache.get("🎉");
+
+                    if (!reaction) {
+                        return interaction.channel.send("Keine Teilnehmer ❌");
+                    }
+
+                    const users = await reaction.users.fetch();
+                    const validUsers = users.filter(user => !user.bot);
+
+                    if (validUsers.size === 0) {
+                        return interaction.channel.send("Niemand hat teilgenommen 😢");
+                    }
+
+                    const winner = validUsers.random();
+
+                    interaction.channel.send(`🎉 Gewinner: ${winner} hat **${preis}** gewonnen!`);
+                } catch (err) {
+                    console.error(err);
+                    interaction.channel.send("Fehler beim Auslosen ❌");
+                }
+            }, dauerMs);
+        }
+
+        // TICKET PANEL
+        if (interaction.commandName === 'ticketpanel') {
+
+            const button = new ButtonBuilder()
+                .setCustomId('create_ticket')
+                .setLabel('🎫 Ticket erstellen')
+                .setStyle(ButtonStyle.Primary);
+
+            const row = new ActionRowBuilder().addComponents(button);
+
+            await interaction.reply({
+                content: 'Klicke auf den Button um ein Ticket zu erstellen!',
+                components: [row]
+            });
+        }
+    }
+
+    // BUTTON HANDLER
+    if (interaction.isButton()) {
+
+        if (interaction.customId === 'create_ticket') {
+
+            const channel = await interaction.guild.channels.create({
+                name: `ticket-${interaction.user.username}`,
+                type: ChannelType.GuildText,
+                permissionOverwrites: [
+                    {
+                        id: interaction.guild.id,
+                        deny: [PermissionsBitField.Flags.ViewChannel]
+                    },
+                    {
+                        id: interaction.user.id,
+                        allow: [PermissionsBitField.Flags.ViewChannel]
+                    }
+                ]
+            });
+
+            await interaction.reply({
+                content: `Dein Ticket: ${channel}`,
+                ephemeral: true
+            });
+
+            channel.send(`Hallo ${interaction.user}, das Team wird sich melden!`);
+        }
+    }
 
 });
 
