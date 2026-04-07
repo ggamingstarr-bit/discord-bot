@@ -16,8 +16,8 @@ const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.GuildMessageReactions,
-        GatewayIntentBits.MessageContent
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildMessageReactions
     ]
 });
 
@@ -30,120 +30,88 @@ client.on('interactionCreate', async interaction => {
     // ===== SLASH COMMANDS =====
     if (interaction.isChatInputCommand()) {
 
+        await interaction.deferReply(); // 🔥 WICHTIG
+
         // TEST
         if (interaction.commandName === 'test') {
-            return interaction.reply('Bot funktioniert ✅');
+            return interaction.editReply('Bot funktioniert ✅');
         }
 
         // HALLO
         if (interaction.commandName === 'hallo') {
-            return interaction.reply(`Hallo ${interaction.user.username} 👋`);
+            return interaction.editReply(`Hallo ${interaction.user.username} 👋`);
         }
 
-        // 📊 POLL
+        // POLL
         if (interaction.commandName === 'poll') {
 
             const frage = interaction.options.getString('frage');
             const option1 = interaction.options.getString('option1');
             const option2 = interaction.options.getString('option2');
 
-            const button1 = new ButtonBuilder()
-                .setCustomId('vote_1')
-                .setLabel(option1)
-                .setStyle(ButtonStyle.Primary);
+            const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('vote1').setLabel(option1).setStyle(ButtonStyle.Primary),
+                new ButtonBuilder().setCustomId('vote2').setLabel(option2).setStyle(ButtonStyle.Success)
+            );
 
-            const button2 = new ButtonBuilder()
-                .setCustomId('vote_2')
-                .setLabel(option2)
-                .setStyle(ButtonStyle.Success);
-
-            const row = new ActionRowBuilder().addComponents(button1, button2);
-
-            return interaction.reply({
-                content: `📊 **Umfrage**\n${frage}`,
+            return interaction.editReply({
+                content: `📊 ${frage}`,
                 components: [row]
             });
         }
 
-        // 👑 RENAME ROLE
+        // RENAME ROLE
         if (interaction.commandName === 'renamerole') {
-
-            const newName = interaction.options.getString('name');
 
             const role = interaction.member.roles.cache
                 .filter(r => r.name !== "@everyone")
                 .sort((a, b) => b.position - a.position)
                 .first();
 
-            if (!role) {
-                return interaction.reply("Ich konnte deine Rolle nicht finden ❌");
-            }
+            if (!role) return interaction.editReply("Keine Rolle gefunden ❌");
 
-            try {
-                const oldName = role.name;
-                await role.setName(newName);
+            await role.setName(interaction.options.getString('name'));
 
-                return interaction.reply(`Rolle **${oldName}** → **${newName}** geändert ✅`);
-            } catch (error) {
-                console.error(error);
-                return interaction.reply("Ich darf deine Rolle nicht ändern ❌");
-            }
+            return interaction.editReply("Rolle geändert ✅");
         }
 
-        // 🎉 GIVEAWAY
+        // GIVEAWAY
         if (interaction.commandName === 'giveaway') {
 
-            const dauerMinuten = interaction.options.getInteger('dauer');
+            const dauer = interaction.options.getInteger('dauer');
             const preis = interaction.options.getString('preis');
 
-            const dauerMs = dauerMinuten * 60 * 1000;
+            const msg = await interaction.editReply(
+                `🎉 Giveaway für **${preis}**\nReagiere mit 🎉 (${dauer} Minuten)`
+            );
 
-            await interaction.deferReply();
-
-            const message = await interaction.editReply({
-                content: `🎉 **GIVEAWAY** 🎉\nPreis: **${preis}**\nReagiere mit 🎉 um teilzunehmen!\nEndet in ${dauerMinuten} Minuten.`
-            });
-
-            await message.react("🎉");
+            await msg.react("🎉");
 
             setTimeout(async () => {
-                try {
-                    const fetchedMessage = await interaction.channel.messages.fetch(message.id);
-                    const reaction = fetchedMessage.reactions.cache.get("🎉");
+                const fetched = await interaction.fetchReply();
+                const reaction = fetched.reactions.cache.get("🎉");
 
-                    if (!reaction) {
-                        return interaction.channel.send("Keine Teilnehmer ❌");
-                    }
+                if (!reaction) return interaction.channel.send("Keine Teilnehmer");
 
-                    const users = await reaction.users.fetch();
-                    const validUsers = users.filter(user => !user.bot);
+                const users = await reaction.users.fetch();
+                const winner = users.filter(u => !u.bot).random();
 
-                    if (validUsers.size === 0) {
-                        return interaction.channel.send("Niemand hat teilgenommen 😢");
-                    }
-
-                    const winner = validUsers.random();
-
-                    interaction.channel.send(`🎉 Gewinner: ${winner} hat **${preis}** gewonnen!`);
-                } catch (err) {
-                    console.error(err);
-                    interaction.channel.send("Fehler ❌");
-                }
-            }, dauerMs);
+                interaction.channel.send(`Gewinner: ${winner}`);
+            }, dauer * 60000);
         }
 
-        // 🎫 TICKET PANEL
+        // TICKET PANEL
         if (interaction.commandName === 'ticketpanel') {
 
-            const button = new ButtonBuilder()
-                .setCustomId('create_ticket')
-                .setLabel('🎫 Ticket erstellen')
-                .setStyle(ButtonStyle.Primary);
+            const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId('ticket')
+                    .setLabel('🎫 Ticket erstellen')
+                    .setStyle(ButtonStyle.Primary)
+            );
 
-            const row = new ActionRowBuilder().addComponents(button);
-
-            return interaction.reply({
-                content: 'Klicke auf den Button um ein Ticket zu erstellen!',
+            return interaction.editReply({
+                content: "Ticket erstellen:",
                 components: [row]
             });
         }
@@ -151,121 +119,88 @@ client.on('interactionCreate', async interaction => {
         // 🔨 KICK
         if (interaction.commandName === 'kick') {
 
-            if (!interaction.member.permissions.has("KickMembers")) {
-                return interaction.reply({ content: "❌ Keine Berechtigung", ephemeral: true });
+            if (!interaction.member.permissions.has(PermissionsBitField.Flags.KickMembers)) {
+                return interaction.editReply("Keine Rechte ❌");
             }
 
-            const user = interaction.options.getUser('user');
-            const member = interaction.guild.members.cache.get(user.id);
-
-            if (!member) return interaction.reply("User nicht gefunden ❌");
-
+            const member = interaction.options.getMember('user');
             await member.kick();
-            return interaction.reply(`✅ ${user.username} wurde gekickt`);
+
+            return interaction.editReply("User gekickt ✅");
         }
 
         // 🔨 BAN
         if (interaction.commandName === 'ban') {
 
-            if (!interaction.member.permissions.has("BanMembers")) {
-                return interaction.reply({ content: "❌ Keine Berechtigung", ephemeral: true });
+            if (!interaction.member.permissions.has(PermissionsBitField.Flags.BanMembers)) {
+                return interaction.editReply("Keine Rechte ❌");
             }
 
             const user = interaction.options.getUser('user');
             await interaction.guild.members.ban(user.id);
 
-            return interaction.reply(`✅ ${user.username} wurde gebannt`);
+            return interaction.editReply("User gebannt ✅");
         }
 
         // 🔨 TIMEOUT
         if (interaction.commandName === 'timeout') {
 
-            if (!interaction.member.permissions.has("ModerateMembers")) {
-                return interaction.reply({ content: "❌ Keine Berechtigung", ephemeral: true });
+            if (!interaction.member.permissions.has(PermissionsBitField.Flags.ModerateMembers)) {
+                return interaction.editReply("Keine Rechte ❌");
             }
 
-            const user = interaction.options.getUser('user');
+            const member = interaction.options.getMember('user');
             const dauer = interaction.options.getInteger('dauer');
 
-            const member = interaction.guild.members.cache.get(user.id);
+            await member.timeout(dauer * 60000);
 
-            await member.timeout(dauer * 60 * 1000);
-
-            return interaction.reply(`⏳ ${user.username} wurde für ${dauer} Minuten gemutet`);
+            return interaction.editReply(`Timeout für ${dauer} Minuten`);
         }
 
         // 🔨 CLEAR
         if (interaction.commandName === 'clear') {
 
-            if (!interaction.member.permissions.has("ManageMessages")) {
-                return interaction.reply({ content: "❌ Keine Berechtigung", ephemeral: true });
+            if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
+                return interaction.editReply("Keine Rechte ❌");
             }
 
             const amount = interaction.options.getInteger('anzahl');
 
             await interaction.channel.bulkDelete(amount);
 
-            return interaction.reply({ content: `🧹 ${amount} Nachrichten gelöscht`, ephemeral: true });
+            return interaction.editReply(`Gelöscht: ${amount}`);
         }
     }
 
     // ===== BUTTONS =====
     if (interaction.isButton()) {
 
-        // POLL
-        if (interaction.customId === 'vote_1') {
-            return interaction.reply({ content: "Du hast Option 1 gewählt ✅", ephemeral: true });
-        }
-
-        if (interaction.customId === 'vote_2') {
-            return interaction.reply({ content: "Du hast Option 2 gewählt ✅", ephemeral: true });
-        }
-
-        // TICKET ERSTELLEN
-        if (interaction.customId === 'create_ticket') {
+        if (interaction.customId === 'ticket') {
 
             const channel = await interaction.guild.channels.create({
                 name: `ticket-${interaction.user.username}`,
                 type: ChannelType.GuildText,
-                parent: SUPPORT_CATEGORY_ID,
-                permissionOverwrites: [
-                    {
-                        id: interaction.guild.id,
-                        deny: [PermissionsBitField.Flags.ViewChannel]
-                    },
-                    {
-                        id: interaction.user.id,
-                        allow: [PermissionsBitField.Flags.ViewChannel]
-                    }
-                ]
+                parent: SUPPORT_CATEGORY_ID
             });
 
-            const closeButton = new ButtonBuilder()
-                .setCustomId('close_ticket')
-                .setLabel('🔒 Ticket schließen')
-                .setStyle(ButtonStyle.Danger);
+            const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId('close')
+                    .setLabel('Schließen')
+                    .setStyle(ButtonStyle.Danger)
+            );
 
-            const row = new ActionRowBuilder().addComponents(closeButton);
-
-            await interaction.reply({
-                content: `Dein Ticket: ${channel}`,
-                ephemeral: true
-            });
+            await interaction.reply({ content: `Ticket: ${channel}`, ephemeral: true });
 
             channel.send({
-                content: `Hallo ${interaction.user}, beschreibe dein Problem.`,
+                content: "Support wird sich melden",
                 components: [row]
             });
         }
 
-        // TICKET SCHLIESSEN
-        if (interaction.customId === 'close_ticket') {
-
-            await interaction.reply("Ticket wird geschlossen...");
-
-            setTimeout(() => {
-                interaction.channel.delete();
-            }, 3000);
+        if (interaction.customId === 'close') {
+            await interaction.reply("Schließe Ticket...");
+            setTimeout(() => interaction.channel.delete(), 3000);
         }
     }
 
