@@ -16,7 +16,6 @@ const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMessageReactions
     ]
 });
@@ -27,14 +26,14 @@ client.once("ready", () => {
 
 client.on('interactionCreate', async interaction => {
 
-    // ===== SLASH COMMANDS =====
+    // ===== COMMANDS =====
     if (interaction.isChatInputCommand()) {
 
-        await interaction.deferReply(); // 🔥 WICHTIG
+        await interaction.deferReply();
 
         // TEST
         if (interaction.commandName === 'test') {
-            return interaction.editReply('Bot funktioniert ✅');
+            return interaction.editReply("Bot funktioniert ✅");
         }
 
         // HALLO
@@ -63,6 +62,8 @@ client.on('interactionCreate', async interaction => {
         // RENAME ROLE
         if (interaction.commandName === 'renamerole') {
 
+            const newName = interaction.options.getString('name');
+
             const role = interaction.member.roles.cache
                 .filter(r => r.name !== "@everyone")
                 .sort((a, b) => b.position - a.position)
@@ -70,9 +71,12 @@ client.on('interactionCreate', async interaction => {
 
             if (!role) return interaction.editReply("Keine Rolle gefunden ❌");
 
-            await role.setName(interaction.options.getString('name'));
-
-            return interaction.editReply("Rolle geändert ✅");
+            try {
+                await role.setName(newName);
+                return interaction.editReply("Rolle geändert ✅");
+            } catch {
+                return interaction.editReply("Fehler ❌");
+            }
         }
 
         // GIVEAWAY
@@ -88,15 +92,24 @@ client.on('interactionCreate', async interaction => {
             await msg.react("🎉");
 
             setTimeout(async () => {
-                const fetched = await interaction.fetchReply();
-                const reaction = fetched.reactions.cache.get("🎉");
+                try {
+                    const fetched = await interaction.fetchReply();
+                    const reaction = fetched.reactions.cache.get("🎉");
 
-                if (!reaction) return interaction.channel.send("Keine Teilnehmer");
+                    if (!reaction) return interaction.channel.send("Keine Teilnehmer");
 
-                const users = await reaction.users.fetch();
-                const winner = users.filter(u => !u.bot).random();
+                    const users = await reaction.users.fetch();
+                    const valid = users.filter(u => !u.bot);
 
-                interaction.channel.send(`Gewinner: ${winner}`);
+                    if (valid.size === 0) {
+                        return interaction.channel.send("Niemand hat teilgenommen");
+                    }
+
+                    const winner = valid.random();
+                    interaction.channel.send(`🎉 Gewinner: ${winner}`);
+                } catch (err) {
+                    console.error(err);
+                }
             }, dauer * 60000);
         }
 
@@ -111,7 +124,7 @@ client.on('interactionCreate', async interaction => {
             );
 
             return interaction.editReply({
-                content: "Ticket erstellen:",
+                content: "Klicke für Ticket",
                 components: [row]
             });
         }
@@ -175,6 +188,16 @@ client.on('interactionCreate', async interaction => {
     // ===== BUTTONS =====
     if (interaction.isButton()) {
 
+        // POLL BUTTONS
+        if (interaction.customId === 'vote1') {
+            return interaction.reply({ content: "Du hast Option 1 gewählt", ephemeral: true });
+        }
+
+        if (interaction.customId === 'vote2') {
+            return interaction.reply({ content: "Du hast Option 2 gewählt", ephemeral: true });
+        }
+
+        // TICKET
         if (interaction.customId === 'ticket') {
 
             const channel = await interaction.guild.channels.create({
@@ -186,7 +209,7 @@ client.on('interactionCreate', async interaction => {
             const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
                     .setCustomId('close')
-                    .setLabel('Schließen')
+                    .setLabel('🔒 Schließen')
                     .setStyle(ButtonStyle.Danger)
             );
 
@@ -198,8 +221,9 @@ client.on('interactionCreate', async interaction => {
             });
         }
 
+        // CLOSE TICKET
         if (interaction.customId === 'close') {
-            await interaction.reply("Schließe Ticket...");
+            await interaction.reply("Ticket wird geschlossen...");
             setTimeout(() => interaction.channel.delete(), 3000);
         }
     }
