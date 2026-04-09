@@ -158,17 +158,34 @@ client.on('interactionCreate', async interaction => {
         // 🔨 TIMEOUT
         if (interaction.commandName === 'timeout') {
 
-            if (!interaction.member.permissions.has(PermissionsBitField.Flags.ModerateMembers)) {
-                return interaction.editReply("Keine Rechte ❌");
-            }
+    try {
 
-            const member = interaction.options.getMember('user');
-            const dauer = interaction.options.getInteger('dauer');
-
-            await member.timeout(dauer * 60000);
-
-            return interaction.editReply(`Timeout für ${dauer} Minuten`);
+        if (!interaction.member.permissions.has(PermissionsBitField.Flags.ModerateMembers)) {
+            return interaction.editReply("Keine Rechte ❌");
         }
+
+        const user = interaction.options.getUser('user');
+        const dauer = interaction.options.getInteger('dauer');
+
+        const member = await interaction.guild.members.fetch(user.id);
+
+        if (!member) {
+            return interaction.editReply("User nicht gefunden ❌");
+        }
+
+        if (!member.moderatable) {
+            return interaction.editReply("Ich darf diesen User nicht timeouten ❌");
+        }
+
+        await member.timeout(dauer * 60000);
+
+        return interaction.editReply(`⏳ ${user.username} wurde für ${dauer} Minuten gemutet`);
+
+    } catch (err) {
+        console.error(err);
+        return interaction.editReply("Fehler beim Timeout ❌");
+    }
+}
 
         // 🔨 CLEAR
         if (interaction.commandName === 'clear') {
