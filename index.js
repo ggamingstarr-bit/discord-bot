@@ -62,22 +62,33 @@ client.on('interactionCreate', async interaction => {
         // RENAME ROLE
         if (interaction.commandName === 'renamerole') {
 
-            const newName = interaction.options.getString('name');
+    if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
+        return interaction.editReply("Keine Rechte ❌");
+    }
 
-            const role = interaction.member.roles.cache
-                .filter(r => r.name !== "@everyone")
-                .sort((a, b) => b.position - a.position)
-                .first();
+    const newName = interaction.options.getString('name');
 
-            if (!role) return interaction.editReply("Keine Rolle gefunden ❌");
+    const role = interaction.member.roles.cache
+        .filter(r => r.name !== "@everyone")
+        .sort((a, b) => b.position - a.position)
+        .first();
 
-            try {
-                await role.setName(newName);
-                return interaction.editReply("Rolle geändert ✅");
-            } catch {
-                return interaction.editReply("Fehler ❌");
-            }
-        }
+    if (!role) {
+        return interaction.editReply("Keine Rolle gefunden ❌");
+    }
+
+    if (role.position >= interaction.guild.members.me.roles.highest.position) {
+        return interaction.editReply("Meine Rolle ist zu niedrig ❌");
+    }
+
+    try {
+        await role.setName(newName);
+        return interaction.editReply(`Rolle wurde zu "${newName}" geändert ✅`);
+    } catch (err) {
+        console.error(err);
+        return interaction.editReply("Fehler beim Umbenennen ❌");
+    }
+}
 
         // GIVEAWAY
         if (interaction.commandName === 'giveaway') {
