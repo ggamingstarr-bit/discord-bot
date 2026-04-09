@@ -62,10 +62,6 @@ client.on('interactionCreate', async interaction => {
         // RENAME ROLE
         if (interaction.commandName === 'renamerole') {
 
-    if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
-        return interaction.editReply("Keine Rechte ❌");
-    }
-
     const newName = interaction.options.getString('name');
 
     const role = interaction.member.roles.cache
@@ -83,10 +79,10 @@ client.on('interactionCreate', async interaction => {
 
     try {
         await role.setName(newName);
-        return interaction.editReply(`Rolle wurde zu "${newName}" geändert ✅`);
+        return interaction.editReply(`Deine Rolle heißt jetzt "${newName}" ✅`);
     } catch (err) {
         console.error(err);
-        return interaction.editReply("Fehler beim Umbenennen ❌");
+        return interaction.editReply("Fehler ❌");
     }
 }
 
