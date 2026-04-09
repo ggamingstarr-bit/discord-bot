@@ -9,8 +9,6 @@ const {
     EmbedBuilder
 } = require('discord.js');
 
-const play = require('play-dl');
-
 console.log("BOT STARTET...");
 
 // 🔧 NUR DAS HIER BRAUCHST DU NOCH
