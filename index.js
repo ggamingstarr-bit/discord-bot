@@ -9,13 +9,6 @@ const {
     EmbedBuilder
 } = require('discord.js');
 
-const {
-    joinVoiceChannel,
-    createAudioPlayer,
-    createAudioResource,
-    AudioPlayerStatus
-} = require('@discordjs/voice');
-
 const play = require('play-dl');
 
 console.log("BOT STARTET...");
