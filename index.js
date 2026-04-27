@@ -163,6 +163,57 @@ client.on('interactionCreate', async interaction => {
             return interaction.editReply({ embeds: [embed] });
         }
 
+        if (interaction.commandName === 'giveaway') {
+
+    const dauer = interaction.options.getInteger('dauer'); // Minuten
+    const preis = interaction.options.getString('preis');
+
+    try {
+        // Giveaway Nachricht senden
+        const msg = await interaction.reply({
+            content: `🎉 **GIVEAWAY** 🎉\nPreis: **${preis}**\nDauer: **${dauer} Minute(n)**\nReagiere mit 🎉`,
+            fetchReply: true
+        });
+
+        await msg.react("🎉");
+
+        // Nach Ablauf Gewinner ziehen
+        setTimeout(async () => {
+            try {
+                const fetchedMsg = await interaction.channel.messages.fetch(msg.id);
+                const reaction = fetchedMsg.reactions.cache.get("🎉");
+
+                if (!reaction) {
+                    await interaction.channel.send("Keine Teilnehmer 😢");
+                    return fetchedMsg.delete().catch(() => {});
+                }
+
+                const users = await reaction.users.fetch();
+                const validUsers = users.filter(u => !u.bot);
+
+                if (validUsers.size === 0) {
+                    await interaction.channel.send("Niemand hat teilgenommen 😢");
+                    return fetchedMsg.delete().catch(() => {});
+                }
+
+                const winner = validUsers.random();
+
+                await interaction.channel.send(`🎉 Gewinner von **${preis}**: ${winner}`);
+
+                // Giveaway löschen
+                await fetchedMsg.delete().catch(() => {});
+
+            } catch (err) {
+                console.error(err);
+            }
+        }, dauer * 60000);
+
+    } catch (err) {
+        console.error(err);
+        return interaction.reply("Fehler beim Giveaway ❌");
+    }
+}
+
         // KICK
         if (interaction.commandName === 'kick') {
             if (!interaction.member.permissions.has(PermissionsBitField.Flags.KickMembers)) {
