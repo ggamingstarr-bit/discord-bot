@@ -1,5 +1,5 @@
 // ===============================
-// DISCORD BOT - MIT PLAY-DL + COOKIES
+// DISCORD BOT - MIT PLAY-DL (KORRIGIERT)
 // ===============================
 
 const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionsBitField, EmbedBuilder } = require('discord.js');
@@ -72,11 +72,15 @@ client.on('interactionCreate', async interaction => {
         await interaction.deferReply();
 
         try {
-            // Suche oder direkter Link
             let song;
-            if (query.includes('youtube.com') || query.includes('youtu.be')) {
-                song = await play.youtube(query);
+            
+            // Direkter YouTube-Link oder Suche
+            if (play.verify_url(query)) {
+                // Es ist eine gültige URL
+                const videoInfo = await play.video_info(query);
+                song = videoInfo.video_details;
             } else {
+                // Suche auf YouTube
                 const searchResults = await play.search(query, { limit: 1 });
                 if (searchResults.length === 0) {
                     return interaction.editReply('❌ Kein Song gefunden!');
@@ -84,6 +88,7 @@ client.on('interactionCreate', async interaction => {
                 song = searchResults[0];
             }
 
+            // Stream abrufen
             const stream = await play.stream(song.url);
             
             const connection = joinVoiceChannel({
@@ -98,7 +103,7 @@ client.on('interactionCreate', async interaction => {
                 inputType: stream.type,
                 inlineVolume: true 
             });
-            resource.volume.volume = 0.5;
+            resource.volume.setVolume(0.5);
             player.play(resource);
             connection.subscribe(player);
             
@@ -115,7 +120,9 @@ client.on('interactionCreate', async interaction => {
             
             await interaction.editReply({ embeds: [embed] });
             
-            player.once(AudioPlayerStatus.Idle, () => connection.destroy());
+            player.once(AudioPlayerStatus.Idle, () => {
+                connection.destroy();
+            });
             
         } catch (error) {
             console.error('Play Fehler:', error);
