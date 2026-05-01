@@ -1,39 +1,17 @@
 // ===============================
-// DISCORD BOT - MIT PLAY-DL (KORREKTE COOKIE-SYNTAX)
+// DISCORD BOT - MIT YT-DLP (KEINE COOKIES NÖTIG)
 // ===============================
 
 const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionsBitField, EmbedBuilder } = require('discord.js');
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus } = require('@discordjs/voice');
-const play = require('play-dl');
+const { exec } = require('child_process');
+const util = require('util');
+const execPromise = util.promisify(exec);
 require('dotenv').config();
 
 // FFmpeg Setup
 const ffmpeg = require('ffmpeg-static');
 process.env.FFMPEG_PATH = ffmpeg;
-
-// 🔑 YOUTUBE COOKIES - RICHTIGE SYNTAX FÜR play-dl v1.9.7
-// Erstelle eine cookies.txt Datei mit diesem Inhalt (Netscape Format)
-// Oder verwende diesen Code:
-
-// Methode 1: Cookie als String (funktioniert nicht immer)
-// play.setToken({
-//     youtube: {
-//         cookie: "VISITOR_INFO1_LIVE=f0TWTTdpAN8; __Secure-1PSID=g.a0009gic9s-...; __Secure-3PSID=g.a0009gic9s-...; LOGIN_INFO=AFmmF2swRQIh..."
-//     }
-// });
-
-// Methode 2: Cookies aus Datei laden (empfohlen)
-const fs = require('fs');
-if (fs.existsSync('./cookies.txt')) {
-    play.setToken({
-        youtube: {
-            cookie: './cookies.txt'
-        }
-    });
-    console.log("✅ YouTube Cookies aus Datei geladen");
-} else {
-    console.warn("⚠️ Keine cookies.txt gefunden! Versuche ohne Cookies...");
-}
 
 const client = new Client({
     intents: [
@@ -50,28 +28,22 @@ client.once('ready', () => {
     console.log(`✅ Online als ${client.user.tag}`);
 });
 
-// AUTOCOMPLETE
+// AUTOCOMPLETE (vereinfacht)
 client.on('interactionCreate', async interaction => {
     if (interaction.isAutocomplete() && interaction.commandName === 'play') {
         const focused = interaction.options.getFocused();
         if (focused.length < 2) return interaction.respond([]);
         
-        try {
-            const results = await play.search(focused, { limit: 5 });
-            await interaction.respond(results.map(song => ({ 
-                name: song.title.substring(0, 100), 
-                value: song.url 
-            })));
-        } catch (error) {
-            console.error("Autocomplete Fehler:", error);
-            await interaction.respond([]);
-        }
+        // Einfache Vorschläge
+        await interaction.respond([
+            { name: `🎵 ${focused} (YouTube Suche)`, value: `ytsearch:${focused}` }
+        ]);
         return;
     }
 
     if (!interaction.isChatInputCommand()) return;
 
-    // PLAY
+    // ========== PLAY mit yt-dlp ==========
     if (interaction.commandName === 'play') {
         const query = interaction.options.getString('query');
         const voiceChannel = interaction.member.voice.channel;
@@ -83,20 +55,28 @@ client.on('interactionCreate', async interaction => {
         await interaction.deferReply();
 
         try {
-            let song;
-            if (query.includes('youtube.com/watch?v=') || query.includes('youtu.be/')) {
-                const videoInfo = await play.video_info(query);
-                song = videoInfo.video_details;
-            } else {
-                const searchResults = await play.search(query, { limit: 1 });
-                if (searchResults.length === 0) {
-                    return interaction.editReply('❌ Kein Song gefunden!');
-                }
-                song = searchResults[0];
+            // YouTube-Suche oder direkter Link
+            let url = query;
+            if (!query.includes('youtube.com') && !query.includes('youtu.be') && !query.startsWith('ytsearch:')) {
+                url = `ytsearch1:${query}`;
             }
 
-            const stream = await play.stream(song.url);
-            
+            // Titel mit yt-dlp holen (für Embed)
+            let title = query;
+            if (url.startsWith('ytsearch1:')) {
+                const searchTerm = url.replace('ytsearch1:', '');
+                const searchResult = await execPromise(`yt-dlp --get-title --no-playlist "ytsearch1:${searchTerm}"`);
+                title = searchResult.stdout.trim();
+                // Die eigentliche URL für den Stream
+                const urlResult = await execPromise(`yt-dlp --get-url --no-playlist "ytsearch1:${searchTerm}"`);
+                url = urlResult.stdout.trim();
+            } else if (url.includes('youtube.com') || url.includes('youtu.be')) {
+                const titleResult = await execPromise(`yt-dlp --get-title --no-playlist "${url}"`);
+                title = titleResult.stdout.trim();
+                const urlResult = await execPromise(`yt-dlp --get-url --no-playlist "${url}"`);
+                url = urlResult.stdout.trim();
+            }
+
             const connection = joinVoiceChannel({
                 channelId: voiceChannel.id,
                 guildId: interaction.guild.id,
@@ -105,8 +85,7 @@ client.on('interactionCreate', async interaction => {
             });
             
             const player = createAudioPlayer();
-            const resource = createAudioResource(stream.stream, { 
-                inputType: stream.type,
+            const resource = createAudioResource(url, { 
                 inlineVolume: true 
             });
             resource.volume.setVolume(0.5);
@@ -115,14 +94,8 @@ client.on('interactionCreate', async interaction => {
             
             const embed = new EmbedBuilder()
                 .setTitle('🎵 Now Playing')
-                .setDescription(song.title)
-                .setURL(song.url)
-                .setThumbnail(song.thumbnails?.[0]?.url || null)
-                .setColor('Green')
-                .addFields(
-                    { name: 'Dauer', value: song.durationRaw || 'Unbekannt', inline: true },
-                    { name: 'Kanal', value: song.channel?.name || 'Unbekannt', inline: true }
-                );
+                .setDescription(title.substring(0, 100))
+                .setColor('Green');
             
             await interaction.editReply({ embeds: [embed] });
             
@@ -132,21 +105,21 @@ client.on('interactionCreate', async interaction => {
             
         } catch (error) {
             console.error('Play Fehler:', error);
-            await interaction.editReply('❌ Fehler beim Abspielen!');
+            await interaction.editReply('❌ Fehler beim Abspielen! Bitte versuche es mit einem YouTube-Link.');
         }
     }
 
-    // TEST
+    // ========== TEST ==========
     if (interaction.commandName === 'test') {
         return interaction.reply("Bot läuft ✅");
     }
 
-    // HALLO
+    // ========== HALLO ==========
     if (interaction.commandName === 'hallo') {
         return interaction.reply(`Hallo ${interaction.user.username}`);
     }
 
-    // GIVEAWAY
+    // ========== GIVEAWAY ==========
     if (interaction.commandName === 'giveaway') {
         const dauer = interaction.options.getInteger('dauer');
         const preis = interaction.options.getString('preis');
@@ -192,7 +165,7 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // KICK
+    // ========== KICK ==========
     if (interaction.commandName === 'kick') {
         if (!interaction.member.permissions.has(PermissionsBitField.Flags.KickMembers)) {
             return interaction.reply("Keine Rechte ❌");
@@ -202,7 +175,7 @@ client.on('interactionCreate', async interaction => {
         return interaction.reply("Gekickt ✅");
     }
 
-    // BAN
+    // ========== BAN ==========
     if (interaction.commandName === 'ban') {
         if (!interaction.member.permissions.has(PermissionsBitField.Flags.BanMembers)) {
             return interaction.reply("Keine Rechte ❌");
@@ -212,7 +185,7 @@ client.on('interactionCreate', async interaction => {
         return interaction.reply("Gebannt ✅");
     }
 
-    // CLEAR
+    // ========== CLEAR ==========
     if (interaction.commandName === 'clear') {
         if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
             return interaction.reply("Keine Rechte ❌");
@@ -222,7 +195,7 @@ client.on('interactionCreate', async interaction => {
         return interaction.reply(`Gelöscht: ${amount}`);
     }
 
-    // TIMEOUT
+    // ========== TIMEOUT ==========
     if (interaction.commandName === 'timeout') {
         try {
             const user = interaction.options.getUser('user');
@@ -238,7 +211,7 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // RENAME ROLE
+    // ========== RENAME ROLE ==========
     if (interaction.commandName === 'renamerole') {
         const newName = interaction.options.getString('name');
         const role = interaction.member.roles.cache
@@ -257,7 +230,7 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // TICKET PANEL
+    // ========== TICKET PANEL ==========
     if (interaction.commandName === 'ticketpanel') {
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
@@ -272,7 +245,7 @@ client.on('interactionCreate', async interaction => {
     }
 });
 
-// BUTTONS
+// ========== BUTTONS ==========
 client.on('interactionCreate', async interaction => {
     if (!interaction.isButton()) return;
 
