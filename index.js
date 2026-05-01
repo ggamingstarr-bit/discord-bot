@@ -1,30 +1,31 @@
 // ===============================
-// DISCORD BOT - MIT SUCHFUNKTION (WIE BEI MAKI)
+// DISCORD BOT - MIT YT-SEARCH (FUNKTIONIERT)
 // ===============================
 
 const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionsBitField, EmbedBuilder } = require('discord.js');
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus } = require('@discordjs/voice');
 const ytdl = require('ytdl-core');
+const yts = require('yt-search');
 require('dotenv').config();
 
 // FFmpeg Setup
 const ffmpeg = require('ffmpeg-static');
 process.env.FFMPEG_PATH = ffmpeg;
 
-// --- NEUE SUCH-FUNKTION ---
+// --- SUCH-FUNKTION MIT YT-SEARCH ---
 async function getVideoUrlFromSearch(searchQuery) {
-    const searchUrl = `ytsearch:${searchQuery}`;
     try {
-        const searchResults = await ytdl.search(searchUrl, { limit: 1 });
-        if (searchResults && searchResults.length > 0) {
-            return searchResults[0].url;
+        const result = await yts(searchQuery);
+        if (result && result.videos && result.videos.length > 0) {
+            // Gib die URL des ersten (besten) Ergebnisses zurück
+            return result.videos[0].url;
         }
     } catch (error) {
         console.error("Fehler bei der YouTube-Suche:", error);
     }
     return null;
 }
-// --------------------------
+// ---------------------------------
 
 const client = new Client({
     intents: [
@@ -46,12 +47,24 @@ client.on('interactionCreate', async interaction => {
     if (interaction.isAutocomplete() && interaction.commandName === 'play') {
         const focused = interaction.options.getFocused();
         if (focused.length < 2) return interaction.respond([]);
-        await interaction.respond([{ name: `🔍 Suche: ${focused}`, value: focused }]);
+        
+        try {
+            const results = await yts(focused);
+            const suggestions = results.videos.slice(0, 5).map(video => ({
+                name: video.title.substring(0, 100),
+                value: video.url
+            }));
+            await interaction.respond(suggestions);
+        } catch (error) {
+            console.error("Autocomplete Fehler:", error);
+            await interaction.respond([]);
+        }
         return;
     }
+
     if (!interaction.isChatInputCommand()) return;
 
-    // ========== PLAY (JETZT MIT SUCHFUNKTION) ==========
+    // ========== PLAY (MIT SUCHFUNKTION) ==========
     if (interaction.commandName === 'play') {
         const query = interaction.options.getString('query');
         const voiceChannel = interaction.member.voice.channel;
@@ -61,9 +74,9 @@ client.on('interactionCreate', async interaction => {
         }
 
         await interaction.deferReply();
-        let videoUrl = query; // Standard: Wir gehen von einem direkten Link aus
+        let videoUrl = query;
         
-        // --- NEU: Wenn kein Link, dann suchen ---
+        // Prüfen ob es ein gültiger YouTube-Link ist
         if (!ytdl.validateURL(query)) {
             await interaction.editReply(`🔍 Suche nach **${query}**...`);
             const foundUrl = await getVideoUrlFromSearch(query);
@@ -72,7 +85,6 @@ client.on('interactionCreate', async interaction => {
             }
             videoUrl = foundUrl;
         }
-        // ----------------------------------------
 
         try {
             // Video-Info abrufen
@@ -92,7 +104,11 @@ client.on('interactionCreate', async interaction => {
                 filter: 'audioonly',
                 quality: 'highestaudio',
                 highWaterMark: 1 << 25,
-                requestOptions: { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' } }
+                requestOptions: {
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                    }
+                }
             });
 
             const connection = joinVoiceChannel({
@@ -154,7 +170,6 @@ client.on('interactionCreate', async interaction => {
 
     // ========== GIVEAWAY ==========
     if (interaction.commandName === 'giveaway') {
-        // ... (dein bestehender Giveaway-Code)
         const dauer = interaction.options.getInteger('dauer');
         const preis = interaction.options.getString('preis');
 
