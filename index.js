@@ -13,16 +13,13 @@ const ffmpeg = require('ffmpeg-static');
 process.env.FFMPEG_PATH = ffmpeg;
 
 // Cookies für YouTube
-if (fs.existsSync('./cookies.txt')) {
-    play.setToken({
-        youtube: {
-            cookie: './cookies.txt'
-        }
-    });
-    console.log("✅ YouTube Cookies geladen");
-} else {
-    console.warn("⚠️ Keine cookies.txt gefunden! YouTube könnte blockieren.");
-}
+const cookieString = `HIER_DEN_GESAMTEN_INHALT_DEINER_cookies.txt_DATEI_EINFÜGEN`;
+play.setToken({
+    youtube: {
+        cookie: cookieString
+    }
+});
+console.log("✅ Cookies direkt gesetzt");
 
 const client = new Client({
     intents: [
