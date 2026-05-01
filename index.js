@@ -1,8 +1,13 @@
+// ===============================
+// DISCORD BOT - MIT DISTUBE
+// ===============================
+
 const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionsBitField, EmbedBuilder } = require('discord.js');
-const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus } = require('@discordjs/voice');
-const play = require('play-dl');
+const { DisTube } = require('distube');
+const { YtDlpPlugin } = require('@distube/yt-dlp');
 require('dotenv').config();
 
+// FFmpeg für Audio
 const ffmpeg = require('ffmpeg-static');
 process.env.FFMPEG_PATH = ffmpeg;
 
@@ -17,139 +22,247 @@ const client = new Client({
     ]
 });
 
+// 🎵 DISTUBE MUSIK SYSTEM
+const distube = new DisTube(client, {
+    plugins: [new YtDlpPlugin()],
+    emitNewSongOnly: true,
+    leaveOnFinish: true,
+    leaveOnStop: true,
+    leaveOnEmpty: true,
+    savePreviousSongs: false,
+    searchSongs: 0,
+    nsfw: false
+});
+
+// 🎵 DISTUBE EVENTS
+distube.on('playSong', (queue, song) => {
+    queue.textChannel.send(`🎵 **${song.name}** - \`${song.formattedDuration}\``);
+});
+
+distube.on('addSong', (queue, song) => {
+    queue.textChannel.send(`➕ **${song.name}** wurde zur Warteschlange hinzugefügt`);
+});
+
+distube.on('finish', queue => {
+    queue.textChannel.send("🏁 Die Warteschlange ist zu Ende");
+});
+
+distube.on('error', (channel, error) => {
+    console.error("DisTube Error:", error);
+    if (channel) channel.send("❌ Ein Fehler ist aufgetreten!");
+});
+
 client.once('ready', () => {
     console.log(`✅ Online als ${client.user.tag}`);
 });
 
-// Autocomplete
+// ===============================
+// 🎯 COMMANDS
+// ===============================
 client.on('interactionCreate', async interaction => {
-    if (interaction.isAutocomplete() && interaction.commandName === 'play') {
-        const focused = interaction.options.getFocused();
-        if (focused.length < 2) return interaction.respond([]);
-        
-        const results = await play.search(focused, { limit: 5 });
-        await interaction.respond(results.map(song => ({ name: song.title.substring(0, 100), value: song.url })));
-    }
-
     if (!interaction.isChatInputCommand()) return;
 
-    // PLAY Command
+    // 🎵 PLAY (DisTube Version)
     if (interaction.commandName === 'play') {
         const query = interaction.options.getString('query');
         const voiceChannel = interaction.member.voice.channel;
-        if (!voiceChannel) return interaction.reply({ content: '❌ Du musst in einem Voice-Channel sein!', ephemeral: true });
 
-        await interaction.deferReply();
-        
+        if (!voiceChannel) {
+            return interaction.reply({ content: '❌ Du musst in einem Voice-Channel sein!', ephemeral: true });
+        }
+
+        await interaction.reply(`🎵 Suche nach: **${query}**`);
+
         try {
-            const search = await play.search(query, { limit: 1 });
-            if (!search.length) return interaction.editReply('❌ Kein Song gefunden!');
-            
-            const song = search[0];
-            const stream = await play.stream(song.url);
-            
-            const connection = joinVoiceChannel({
-                channelId: voiceChannel.id,
-                guildId: interaction.guild.id,
-                adapterCreator: interaction.guild.voiceAdapterCreator,
-                selfDeaf: true
+            await distube.play(voiceChannel, query, {
+                member: interaction.member,
+                textChannel: interaction.channel
             });
-            
-            const player = createAudioPlayer();
-            const resource = createAudioResource(stream.stream, { inputType: stream.type, inlineVolume: true });
-            resource.volume = 0.5;
-            player.play(resource);
-            connection.subscribe(player);
-            
-            const embed = new EmbedBuilder()
-                .setTitle('🎵 Now Playing')
-                .setDescription(song.title)
-                .setURL(song.url)
-                .setColor('Green');
-            
-            await interaction.editReply({ embeds: [embed] });
-            
-            player.once(AudioPlayerStatus.Idle, () => connection.destroy());
         } catch (error) {
             console.error(error);
             await interaction.editReply('❌ Fehler beim Abspielen!');
         }
     }
 
-    // TEST
-    if (interaction.commandName === 'test') return interaction.reply('Bot läuft ✅');
-    
-    // HALLO
-    if (interaction.commandName === 'hallo') return interaction.reply(`Hallo ${interaction.user.username}`);
-    
-    // GIVEAWAY
+    // 🧪 TEST
+    if (interaction.commandName === 'test') {
+        return interaction.reply("Bot läuft ✅");
+    }
+
+    // 👋 HALLO
+    if (interaction.commandName === 'hallo') {
+        return interaction.reply(`Hallo ${interaction.user.username}`);
+    }
+
+    // 🎉 GIVEAWAY
     if (interaction.commandName === 'giveaway') {
         const dauer = interaction.options.getInteger('dauer');
         const preis = interaction.options.getString('preis');
-        const msg = await interaction.reply({ content: `🎉 **GIVEAWAY** 🎉\n\n🏆 Preis: **${preis}**\n⏰ Dauer: **${dauer} Minuten**\n\nReagiere mit 🎉!`, fetchReply: true });
-        await msg.react('🎉');
-        setTimeout(async () => {
-            const fetched = await interaction.channel.messages.fetch(msg.id);
-            const reaction = fetched.reactions.cache.get('🎉');
-            if (!reaction) return interaction.channel.send('Keine Teilnehmer 😢');
-            const users = await reaction.users.fetch();
-            const teilnehmer = users.filter(u => !u.bot);
-            if (!teilnehmer.size) return interaction.channel.send('Niemand hat teilgenommen 😢');
-            const winner = teilnehmer.random();
-            await interaction.channel.send(`🎉 Gewinner von **${preis}**: ${winner}`);
-            await fetched.delete();
-        }, dauer * 60000);
+
+        try {
+            const msg = await interaction.reply({
+                content: `🎉 **GIVEAWAY** 🎉\n\n🏆 Preis: **${preis}**\n⏰ Dauer: **${dauer} Minute(n)**\n\nReagiere mit 🎉 zum Teilnehmen!`,
+                fetchReply: true
+            });
+
+            await msg.react("🎉");
+
+            setTimeout(async () => {
+                try {
+                    const fetchedMsg = await interaction.channel.messages.fetch(msg.id);
+                    const reaction = fetchedMsg.reactions.cache.get("🎉");
+
+                    if (!reaction) {
+                        await interaction.channel.send("Keine Teilnehmer 😢");
+                        return fetchedMsg.delete().catch(() => {});
+                    }
+
+                    const users = await reaction.users.fetch();
+                    const teilnehmer = users.filter(user => !user.bot);
+
+                    if (teilnehmer.size === 0) {
+                        await interaction.channel.send("Niemand hat teilgenommen 😢");
+                        return fetchedMsg.delete().catch(() => {});
+                    }
+
+                    const winner = teilnehmer.random();
+                    await interaction.channel.send(`🎉 Gewinner von **${preis}**: ${winner}`);
+                    await fetchedMsg.delete().catch(() => {});
+
+                } catch (err) {
+                    console.error(err);
+                }
+            }, dauer * 60000);
+
+        } catch (err) {
+            console.error(err);
+            await interaction.reply({ content: "Fehler beim Giveaway ❌", ephemeral: true });
+        }
     }
-    
-    // KICK
+
+    // 👢 KICK
     if (interaction.commandName === 'kick') {
-        if (!interaction.member.permissions.has(PermissionsBitField.Flags.KickMembers)) return interaction.reply('Keine Rechte ❌');
+        if (!interaction.member.permissions.has(PermissionsBitField.Flags.KickMembers)) {
+            return interaction.reply("Keine Rechte ❌");
+        }
         const member = interaction.options.getMember('user');
         await member.kick();
-        return interaction.reply('Gekickt ✅');
+        return interaction.reply("Gekickt ✅");
     }
-    
-    // BAN
+
+    // 🚫 BAN
     if (interaction.commandName === 'ban') {
-        if (!interaction.member.permissions.has(PermissionsBitField.Flags.BanMembers)) return interaction.reply('Keine Rechte ❌');
+        if (!interaction.member.permissions.has(PermissionsBitField.Flags.BanMembers)) {
+            return interaction.reply("Keine Rechte ❌");
+        }
         const user = interaction.options.getUser('user');
         await interaction.guild.members.ban(user.id);
-        return interaction.reply('Gebannt ✅');
+        return interaction.reply("Gebannt ✅");
     }
-    
-    // CLEAR
+
+    // 🧹 CLEAR
     if (interaction.commandName === 'clear') {
-        if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) return interaction.reply('Keine Rechte ❌');
+        if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
+            return interaction.reply("Keine Rechte ❌");
+        }
         const amount = interaction.options.getInteger('anzahl');
         await interaction.channel.bulkDelete(amount);
         return interaction.reply(`Gelöscht: ${amount}`);
     }
-    
-    // TIMEOUT
+
+    // ⏰ TIMEOUT
     if (interaction.commandName === 'timeout') {
-        const user = interaction.options.getUser('user');
-        const dauer = interaction.options.getInteger('dauer');
-        const member = await interaction.guild.members.fetch(user.id);
-        if (!member.moderatable) return interaction.reply('Geht nicht ❌');
-        await member.timeout(dauer * 60000);
-        return interaction.reply(`⏳ ${user.username} gemutet`);
+        try {
+            const user = interaction.options.getUser('user');
+            const dauer = interaction.options.getInteger('dauer');
+            const member = await interaction.guild.members.fetch(user.id);
+            if (!member.moderatable) {
+                return interaction.reply("Geht nicht ❌");
+            }
+            await member.timeout(dauer * 60000);
+            return interaction.reply(`⏳ ${user.username} gemutet`);
+        } catch {
+            return interaction.reply("Fehler ❌");
+        }
     }
-    
-    // RENAME ROLE
+
+    // 🏷️ RENAME ROLE
     if (interaction.commandName === 'renamerole') {
         const newName = interaction.options.getString('name');
-        const role = interaction.member.roles.cache.filter(r => r.name !== '@everyone').sort((a, b) => b.position - a.position).first();
-        if (!role) return interaction.reply('Keine Rolle ❌');
-        if (role.position >= interaction.guild.members.me.roles.highest.position) return interaction.reply('Bot Rolle zu niedrig ❌');
-        await role.setName(newName);
-        return interaction.reply(`Neue Rolle: ${newName} ✅`);
+        const role = interaction.member.roles.cache
+            .filter(r => r.name !== "@everyone")
+            .sort((a, b) => b.position - a.position)
+            .first();
+        if (!role) return interaction.reply("Keine Rolle ❌");
+        if (role.position >= interaction.guild.members.me.roles.highest.position) {
+            return interaction.reply("Bot Rolle zu niedrig ❌");
+        }
+        try {
+            await role.setName(newName);
+            return interaction.reply(`Neue Rolle: ${newName} ✅`);
+        } catch {
+            return interaction.reply("Fehler ❌");
+        }
     }
-    
-    // TICKET PANEL
+
+    // 🎫 TICKET PANEL
     if (interaction.commandName === 'ticketpanel') {
-        const row = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('ticket').setLabel('🎫 Ticket erstellen').setStyle(ButtonStyle.Primary));
-        return interaction.reply({ content: '🆘 **Ticket System**', components: [row] });
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId('ticket')
+                .setLabel('🎫 Ticket erstellen')
+                .setStyle(ButtonStyle.Primary)
+        );
+        return interaction.reply({
+            content: "🆘 **Ticket System** – Klicke auf den Button um ein Ticket zu erstellen",
+            components: [row]
+        });
     }
 });
 
+// ===============================
+// 🔘 BUTTONS (TICKET SYSTEM)
+// ===============================
+client.on('interactionCreate', async interaction => {
+    if (!interaction.isButton()) return;
+
+    if (interaction.customId === 'ticket') {
+        const categoryId = "1488522141598220288";
+        
+        const channel = await interaction.guild.channels.create({
+            name: `ticket-${interaction.user.username}`,
+            type: ChannelType.GuildText,
+            parent: categoryId
+        });
+
+        await channel.permissionOverwrites.edit(interaction.user, {
+            SendMessages: true,
+            ReadMessageHistory: true,
+            ViewChannel: true
+        });
+
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId('close')
+                .setLabel('🔒 Schließen')
+                .setStyle(ButtonStyle.Danger)
+        );
+
+        await interaction.reply({ content: `✅ Ticket erstellt: ${channel}`, ephemeral: true });
+        
+        await channel.send({
+            content: `🎫 **Ticket von ${interaction.user.username}**\nSupport wird sich gleich melden.`,
+            components: [row]
+        });
+    }
+
+    if (interaction.customId === 'close') {
+        await interaction.reply("🔒 Ticket wird in 3 Sekunden geschlossen...");
+        setTimeout(() => interaction.channel.delete(), 3000);
+    }
+});
+
+// ===============================
+// 🚀 BOT START
+// ===============================
 client.login(process.env.TOKEN);
