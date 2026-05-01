@@ -1,5 +1,5 @@
 // ===============================
-// DISCORD BOT - MIT DISTUBE
+// DISCORD BOT - MIT DISTUBE (KORRIGIERT)
 // ===============================
 
 const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionsBitField, EmbedBuilder } = require('discord.js');
@@ -22,14 +22,9 @@ const client = new Client({
     ]
 });
 
-// 🎵 DISTUBE MUSIK SYSTEM
+// 🎵 DISTUBE MUSIK SYSTEM (KORRIGIERT - OHNE DEPRECATED OPTIONS)
 const distube = new DisTube(client, {
     plugins: [new YtDlpPlugin()],
-    emitNewSongOnly: true,
-    leaveOnFinish: true,
-    leaveOnStop: true,
-    leaveOnEmpty: true,
-    savePreviousSongs: false,
     searchSongs: 0,
     nsfw: false
 });
@@ -60,9 +55,27 @@ client.once('ready', () => {
 // 🎯 COMMANDS
 // ===============================
 client.on('interactionCreate', async interaction => {
+    // Autocomplete für /play
+    if (interaction.isAutocomplete() && interaction.commandName === 'play') {
+        const focused = interaction.options.getFocused();
+        if (focused.length < 2) return interaction.respond([]);
+        
+        try {
+            const results = await distube.search(focused, { limit: 5 });
+            await interaction.respond(results.map(song => ({ 
+                name: song.name.substring(0, 100), 
+                value: song.url 
+            })));
+        } catch (error) {
+            console.error("Autocomplete Fehler:", error);
+            await interaction.respond([]);
+        }
+        return;
+    }
+
     if (!interaction.isChatInputCommand()) return;
 
-    // 🎵 PLAY (DisTube Version)
+    // 🎵 PLAY
     if (interaction.commandName === 'play') {
         const query = interaction.options.getString('query');
         const voiceChannel = interaction.member.voice.channel;
