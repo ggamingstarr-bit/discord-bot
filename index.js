@@ -1,12 +1,10 @@
 // ===============================
-// DISCORD BOT - MIT YT-DLP (KEINE COOKIES NÖTIG)
+// DISCORD BOT - FUNKTIONIERENDE VERSION
 // ===============================
 
 const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionsBitField, EmbedBuilder } = require('discord.js');
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus } = require('@discordjs/voice');
-const { exec } = require('child_process');
-const util = require('util');
-const execPromise = util.promisify(exec);
+const ytdl = require('ytdl-core');
 require('dotenv').config();
 
 // FFmpeg Setup
@@ -28,22 +26,21 @@ client.once('ready', () => {
     console.log(`✅ Online als ${client.user.tag}`);
 });
 
-// AUTOCOMPLETE (vereinfacht)
+// AUTOCOMPLETE
 client.on('interactionCreate', async interaction => {
     if (interaction.isAutocomplete() && interaction.commandName === 'play') {
         const focused = interaction.options.getFocused();
         if (focused.length < 2) return interaction.respond([]);
         
-        // Einfache Vorschläge
         await interaction.respond([
-            { name: `🎵 ${focused} (YouTube Suche)`, value: `ytsearch:${focused}` }
+            { name: `🎵 YouTube Link einfügen`, value: focused }
         ]);
         return;
     }
 
     if (!interaction.isChatInputCommand()) return;
 
-    // ========== PLAY mit yt-dlp ==========
+    // ========== PLAY mit ytdl-core ==========
     if (interaction.commandName === 'play') {
         const query = interaction.options.getString('query');
         const voiceChannel = interaction.member.voice.channel;
@@ -52,30 +49,33 @@ client.on('interactionCreate', async interaction => {
             return interaction.reply({ content: '❌ Du musst in einem Voice-Channel sein!', ephemeral: true });
         }
 
+        // Prüfe ob es ein gültiger YouTube-Link ist
+        if (!ytdl.validateURL(query)) {
+            return interaction.reply({ 
+                content: '❌ Bitte verwende einen gültigen YouTube-Link!\nBeispiel: `https://youtu.be/dQw4w9WgXcQ` oder `https://www.youtube.com/watch?v=...`', 
+                ephemeral: true 
+            });
+        }
+
         await interaction.deferReply();
 
         try {
-            // YouTube-Suche oder direkter Link
-            let url = query;
-            if (!query.includes('youtube.com') && !query.includes('youtu.be') && !query.startsWith('ytsearch:')) {
-                url = `ytsearch1:${query}`;
+            // Video-Info abrufen
+            const info = await ytdl.getInfo(query);
+            const title = info.videoDetails.title;
+            const duration = parseInt(info.videoDetails.lengthSeconds);
+            
+            // Prüfe ob das Video zu lang ist (max 1 Stunde)
+            if (duration > 3600) {
+                return interaction.editReply('❌ Das Video ist länger als 1 Stunde!');
             }
 
-            // Titel mit yt-dlp holen (für Embed)
-            let title = query;
-            if (url.startsWith('ytsearch1:')) {
-                const searchTerm = url.replace('ytsearch1:', '');
-                const searchResult = await execPromise(`yt-dlp --get-title --no-playlist "ytsearch1:${searchTerm}"`);
-                title = searchResult.stdout.trim();
-                // Die eigentliche URL für den Stream
-                const urlResult = await execPromise(`yt-dlp --get-url --no-playlist "ytsearch1:${searchTerm}"`);
-                url = urlResult.stdout.trim();
-            } else if (url.includes('youtube.com') || url.includes('youtu.be')) {
-                const titleResult = await execPromise(`yt-dlp --get-title --no-playlist "${url}"`);
-                title = titleResult.stdout.trim();
-                const urlResult = await execPromise(`yt-dlp --get-url --no-playlist "${url}"`);
-                url = urlResult.stdout.trim();
-            }
+            // Audio-Stream erstellen
+            const stream = ytdl(query, {
+                filter: 'audioonly',
+                quality: 'highestaudio',
+                highWaterMark: 1 << 25
+            });
 
             const connection = joinVoiceChannel({
                 channelId: voiceChannel.id,
@@ -85,7 +85,7 @@ client.on('interactionCreate', async interaction => {
             });
             
             const player = createAudioPlayer();
-            const resource = createAudioResource(url, { 
+            const resource = createAudioResource(stream, { 
                 inlineVolume: true 
             });
             resource.volume.setVolume(0.5);
@@ -95,17 +95,22 @@ client.on('interactionCreate', async interaction => {
             const embed = new EmbedBuilder()
                 .setTitle('🎵 Now Playing')
                 .setDescription(title.substring(0, 100))
-                .setColor('Green');
+                .setURL(query)
+                .setColor('Green')
+                .addFields(
+                    { name: 'Dauer', value: `${Math.floor(duration / 60)}:${(duration % 60).toString().padStart(2, '0')}`, inline: true }
+                );
             
             await interaction.editReply({ embeds: [embed] });
             
             player.once(AudioPlayerStatus.Idle, () => {
                 connection.destroy();
+                interaction.channel.send('🔚 Die Wiedergabe ist beendet.');
             });
             
         } catch (error) {
             console.error('Play Fehler:', error);
-            await interaction.editReply('❌ Fehler beim Abspielen! Bitte versuche es mit einem YouTube-Link.');
+            await interaction.editReply('❌ Fehler beim Abspielen! Bitte versuche einen anderen Link.');
         }
     }
 
