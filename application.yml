@@ -1,0 +1,31 @@
+server:
+  port: 2333
+  address: 0.0.0.0
+lavalink:
+  plugins:
+    # Lädt das YouTube-Plugin automatisch herunter (Version anpassen!)
+    - dependency: "dev.lavalink.youtube:youtube-plugin:1.3.0"
+      repository: "https://maven.lavalink.dev/releases"
+      snapshot: false
+  server:
+    password: "youshallnotpass"  # <- Setze ein sicheres Passwort!
+    sources:
+      youtube: false  # Deaktiviere den veralteten eingebauten Source
+      bandcamp: true
+      soundcloud: true
+      twitch: true
+      vimeo: true
+      http: true
+    youtubeSearchEnabled: true
+    soundcloudSearchEnabled: true
+  # Konfiguration für das YouTube-Plugin
+  youtube:
+    enabled: true
+    allowSearch: true
+    allowDirectVideoIds: true
+    allowDirectPlaylistIds: true
+    clients:
+      - MUSIC
+      - ANDROID_VR
+      - WEB
+      - WEBEMBEDDED
