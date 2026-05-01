@@ -1,5 +1,5 @@
 // ===============================
-// DISCORD BOT - MIT PLAY-DL (KORRIGIERT)
+// DISCORD BOT - MIT PLAY-DL (FINAL)
 // ===============================
 
 const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionsBitField, EmbedBuilder } = require('discord.js');
@@ -12,7 +12,7 @@ require('dotenv').config();
 const ffmpeg = require('ffmpeg-static');
 process.env.FFMPEG_PATH = ffmpeg;
 
-// Cookies für YouTube (gegen Bot-Erkennung)
+// Cookies für YouTube
 if (fs.existsSync('./cookies.txt')) {
     play.setToken({
         youtube: {
@@ -39,7 +39,7 @@ client.once('ready', () => {
     console.log(`✅ Online als ${client.user.tag}`);
 });
 
-// Autocomplete für /play
+// AUTOCOMPLETE
 client.on('interactionCreate', async interaction => {
     if (interaction.isAutocomplete() && interaction.commandName === 'play') {
         const focused = interaction.options.getFocused();
@@ -60,7 +60,7 @@ client.on('interactionCreate', async interaction => {
 
     if (!interaction.isChatInputCommand()) return;
 
-    // 🎵 PLAY
+    // ========== PLAY ==========
     if (interaction.commandName === 'play') {
         const query = interaction.options.getString('query');
         const voiceChannel = interaction.member.voice.channel;
@@ -72,15 +72,12 @@ client.on('interactionCreate', async interaction => {
         await interaction.deferReply();
 
         try {
+            // Suche oder direkter Link
             let song;
-            
-            // Direkter YouTube-Link oder Suche
-            if (play.verify_url(query)) {
-                // Es ist eine gültige URL
+            if (query.includes('youtube.com/watch?v=') || query.includes('youtu.be/')) {
                 const videoInfo = await play.video_info(query);
                 song = videoInfo.video_details;
             } else {
-                // Suche auf YouTube
                 const searchResults = await play.search(query, { limit: 1 });
                 if (searchResults.length === 0) {
                     return interaction.editReply('❌ Kein Song gefunden!');
@@ -88,7 +85,6 @@ client.on('interactionCreate', async interaction => {
                 song = searchResults[0];
             }
 
-            // Stream abrufen
             const stream = await play.stream(song.url);
             
             const connection = joinVoiceChannel({
@@ -130,17 +126,17 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // TEST
+    // ========== TEST ==========
     if (interaction.commandName === 'test') {
         return interaction.reply("Bot läuft ✅");
     }
 
-    // HALLO
+    // ========== HALLO ==========
     if (interaction.commandName === 'hallo') {
         return interaction.reply(`Hallo ${interaction.user.username}`);
     }
 
-    // GIVEAWAY
+    // ========== GIVEAWAY ==========
     if (interaction.commandName === 'giveaway') {
         const dauer = interaction.options.getInteger('dauer');
         const preis = interaction.options.getString('preis');
@@ -186,7 +182,7 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // KICK
+    // ========== KICK ==========
     if (interaction.commandName === 'kick') {
         if (!interaction.member.permissions.has(PermissionsBitField.Flags.KickMembers)) {
             return interaction.reply("Keine Rechte ❌");
@@ -196,7 +192,7 @@ client.on('interactionCreate', async interaction => {
         return interaction.reply("Gekickt ✅");
     }
 
-    // BAN
+    // ========== BAN ==========
     if (interaction.commandName === 'ban') {
         if (!interaction.member.permissions.has(PermissionsBitField.Flags.BanMembers)) {
             return interaction.reply("Keine Rechte ❌");
@@ -206,7 +202,7 @@ client.on('interactionCreate', async interaction => {
         return interaction.reply("Gebannt ✅");
     }
 
-    // CLEAR
+    // ========== CLEAR ==========
     if (interaction.commandName === 'clear') {
         if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
             return interaction.reply("Keine Rechte ❌");
@@ -216,7 +212,7 @@ client.on('interactionCreate', async interaction => {
         return interaction.reply(`Gelöscht: ${amount}`);
     }
 
-    // TIMEOUT
+    // ========== TIMEOUT ==========
     if (interaction.commandName === 'timeout') {
         try {
             const user = interaction.options.getUser('user');
@@ -232,7 +228,7 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // RENAME ROLE
+    // ========== RENAME ROLE ==========
     if (interaction.commandName === 'renamerole') {
         const newName = interaction.options.getString('name');
         const role = interaction.member.roles.cache
@@ -251,7 +247,7 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // TICKET PANEL
+    // ========== TICKET PANEL ==========
     if (interaction.commandName === 'ticketpanel') {
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
@@ -266,7 +262,7 @@ client.on('interactionCreate', async interaction => {
     }
 });
 
-// BUTTONS
+// ========== BUTTONS ==========
 client.on('interactionCreate', async interaction => {
     if (!interaction.isButton()) return;
 
