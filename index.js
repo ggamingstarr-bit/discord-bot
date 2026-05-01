@@ -1,5 +1,5 @@
 // ===============================
-// DISCORD BOT - MIT PLAY-DL (MIT DEINEN COOKIES)
+// DISCORD BOT - MIT PLAY-DL (KORRIGIERTE SYNTAX)
 // ===============================
 
 const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionsBitField, EmbedBuilder } = require('discord.js');
@@ -11,14 +11,14 @@ require('dotenv').config();
 const ffmpeg = require('ffmpeg-static');
 process.env.FFMPEG_PATH = ffmpeg;
 
-// 🔑 DEINE YOUTUBE COOKIES
+// 🔑 YOUTUBE COOKIES (mit Anführungszeichen um die Schlüssel!)
 play.setToken({
     youtube: {
         cookie: {
-            VISITOR_INFO1_LIVE: "f0TWTTdpAN8",
-            __Secure-1PSID: "g.a0009gic9s-eNflhJlx5OAq-3YJfkSPN6qp3J9Ap6PnQiBaSvKd5UO3QWQIo6_Bhvfl6Kr8ShwACgYKAewSARMSFQHGX2MiCcRt0A-fM8e_Gg0lte-j4RoVAUF8yKpZkYznabiMh9c2Gc9PLhTY0076",
-            __Secure-3PSID: "g.a0009gic9s-eNflhJlx5OAq-3YJfkSPN6qp3J9Ap6PnQiBaSvKd5UzTS_VeZlmefBy_SdcWG-wACgYKATQSARMSFQHGX2Mis1zzWNkFflRF4xW3Nx41nxoVAUF8yKo_azmqQANesFhAHQjs42BW0076",
-            LOGIN_INFO: "AFmmF2swRQIhAOKwwGoZOlWshgcxMHXu32Dizn8C4Ph66wJwlrYaj78zAiBbHpB86xsp22J8pfMvtyP7NsIaKxa2uG6CG9Jx81GHVw:QUQ3MjNmeWJQUkdaUl9vYW1fUzBZSGpaQ3pmS2pmTDU2MzlHdXh6LTBYckt1bXk5eGVTcGxoTjNTR2E3VC1XMm04YXBNdFJHVTc1UUVMbXp6ZnBGaFJTNDJaenNXUHZOLTlIQkF5Z1BGa2R1SEQxWE5tRHRHUDFkN3FGdWxTZWxWcmt6R3hRU0lST2JtV0l3VHJJdFJEeGhGNGJxbm0xQmVR"
+            "VISITOR_INFO1_LIVE": "f0TWTTdpAN8",
+            "__Secure-1PSID": "g.a0009gic9s-eNflhJlx5OAq-3YJfkSPN6qp3J9Ap6PnQiBaSvKd5UO3QWQIo6_Bhvfl6Kr8ShwACgYKAewSARMSFQHGX2MiCcRt0A-fM8e_Gg0lte-j4RoVAUF8yKpZkYznabiMh9c2Gc9PLhTY0076",
+            "__Secure-3PSID": "g.a0009gic9s-eNflhJlx5OAq-3YJfkSPN6qp3J9Ap6PnQiBaSvKd5UzTS_VeZlmefBy_SdcWG-wACgYKATQSARMSFQHGX2Mis1zzWNkFflRF4xW3Nx41nxoVAUF8yKo_azmqQANesFhAHQjs42BW0076",
+            "LOGIN_INFO": "AFmmF2swRQIhAOKwwGoZOlWshgcxMHXu32Dizn8C4Ph66wJwlrYaj78zAiBbHpB86xsp22J8pfMvtyP7NsIaKxa2uG6CG9Jx81GHVw:QUQ3MjNmeWJQUkdaUl9vYW1fUzBZSGpaQ3pmS2pmTDU2MzlHdXh6LTBYckt1bXk5eGVTcGxoTjNTR2E3VC1XMm04YXBNdFJHVTc1UUVMbXp6ZnBGaFJTNDJaenNXUHZOLTlIQkF5Z1BGa2R1SEQxWE5tRHRHUDFkN3FGdWxTZWxWcmt6R3hRU0lST2JtV0l3VHJJdFJEeGhGNGJxbm0xQmVR"
         }
     }
 });
@@ -125,17 +125,17 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // ========== TEST ==========
+    // TEST
     if (interaction.commandName === 'test') {
         return interaction.reply("Bot läuft ✅");
     }
 
-    // ========== HALLO ==========
+    // HALLO
     if (interaction.commandName === 'hallo') {
         return interaction.reply(`Hallo ${interaction.user.username}`);
     }
 
-    // ========== GIVEAWAY ==========
+    // GIVEAWAY
     if (interaction.commandName === 'giveaway') {
         const dauer = interaction.options.getInteger('dauer');
         const preis = interaction.options.getString('preis');
@@ -181,7 +181,7 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // ========== KICK ==========
+    // KICK
     if (interaction.commandName === 'kick') {
         if (!interaction.member.permissions.has(PermissionsBitField.Flags.KickMembers)) {
             return interaction.reply("Keine Rechte ❌");
@@ -191,7 +191,7 @@ client.on('interactionCreate', async interaction => {
         return interaction.reply("Gekickt ✅");
     }
 
-    // ========== BAN ==========
+    // BAN
     if (interaction.commandName === 'ban') {
         if (!interaction.member.permissions.has(PermissionsBitField.Flags.BanMembers)) {
             return interaction.reply("Keine Rechte ❌");
@@ -201,7 +201,7 @@ client.on('interactionCreate', async interaction => {
         return interaction.reply("Gebannt ✅");
     }
 
-    // ========== CLEAR ==========
+    // CLEAR
     if (interaction.commandName === 'clear') {
         if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
             return interaction.reply("Keine Rechte ❌");
@@ -211,7 +211,7 @@ client.on('interactionCreate', async interaction => {
         return interaction.reply(`Gelöscht: ${amount}`);
     }
 
-    // ========== TIMEOUT ==========
+    // TIMEOUT
     if (interaction.commandName === 'timeout') {
         try {
             const user = interaction.options.getUser('user');
@@ -227,7 +227,7 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // ========== RENAME ROLE ==========
+    // RENAME ROLE
     if (interaction.commandName === 'renamerole') {
         const newName = interaction.options.getString('name');
         const role = interaction.member.roles.cache
@@ -246,7 +246,7 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // ========== TICKET PANEL ==========
+    // TICKET PANEL
     if (interaction.commandName === 'ticketpanel') {
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
