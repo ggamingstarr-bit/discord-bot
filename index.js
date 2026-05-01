@@ -1,5 +1,5 @@
 // ===============================
-// DISCORD BOT - MIT PLAY-DL (KORRIGIERTE SYNTAX)
+// DISCORD BOT - MIT PLAY-DL (KORREKTE COOKIE-SYNTAX)
 // ===============================
 
 const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionsBitField, EmbedBuilder } = require('discord.js');
@@ -11,18 +11,29 @@ require('dotenv').config();
 const ffmpeg = require('ffmpeg-static');
 process.env.FFMPEG_PATH = ffmpeg;
 
-// 🔑 YOUTUBE COOKIES (mit Anführungszeichen um die Schlüssel!)
-play.setToken({
-    youtube: {
-        cookie: {
-            "VISITOR_INFO1_LIVE": "f0TWTTdpAN8",
-            "__Secure-1PSID": "g.a0009gic9s-eNflhJlx5OAq-3YJfkSPN6qp3J9Ap6PnQiBaSvKd5UO3QWQIo6_Bhvfl6Kr8ShwACgYKAewSARMSFQHGX2MiCcRt0A-fM8e_Gg0lte-j4RoVAUF8yKpZkYznabiMh9c2Gc9PLhTY0076",
-            "__Secure-3PSID": "g.a0009gic9s-eNflhJlx5OAq-3YJfkSPN6qp3J9Ap6PnQiBaSvKd5UzTS_VeZlmefBy_SdcWG-wACgYKATQSARMSFQHGX2Mis1zzWNkFflRF4xW3Nx41nxoVAUF8yKo_azmqQANesFhAHQjs42BW0076",
-            "LOGIN_INFO": "AFmmF2swRQIhAOKwwGoZOlWshgcxMHXu32Dizn8C4Ph66wJwlrYaj78zAiBbHpB86xsp22J8pfMvtyP7NsIaKxa2uG6CG9Jx81GHVw:QUQ3MjNmeWJQUkdaUl9vYW1fUzBZSGpaQ3pmS2pmTDU2MzlHdXh6LTBYckt1bXk5eGVTcGxoTjNTR2E3VC1XMm04YXBNdFJHVTc1UUVMbXp6ZnBGaFJTNDJaenNXUHZOLTlIQkF5Z1BGa2R1SEQxWE5tRHRHUDFkN3FGdWxTZWxWcmt6R3hRU0lST2JtV0l3VHJJdFJEeGhGNGJxbm0xQmVR"
+// 🔑 YOUTUBE COOKIES - RICHTIGE SYNTAX FÜR play-dl v1.9.7
+// Erstelle eine cookies.txt Datei mit diesem Inhalt (Netscape Format)
+// Oder verwende diesen Code:
+
+// Methode 1: Cookie als String (funktioniert nicht immer)
+// play.setToken({
+//     youtube: {
+//         cookie: "VISITOR_INFO1_LIVE=f0TWTTdpAN8; __Secure-1PSID=g.a0009gic9s-...; __Secure-3PSID=g.a0009gic9s-...; LOGIN_INFO=AFmmF2swRQIh..."
+//     }
+// });
+
+// Methode 2: Cookies aus Datei laden (empfohlen)
+const fs = require('fs');
+if (fs.existsSync('./cookies.txt')) {
+    play.setToken({
+        youtube: {
+            cookie: './cookies.txt'
         }
-    }
-});
-console.log("✅ YouTube Cookies geladen");
+    });
+    console.log("✅ YouTube Cookies aus Datei geladen");
+} else {
+    console.warn("⚠️ Keine cookies.txt gefunden! Versuche ohne Cookies...");
+}
 
 const client = new Client({
     intents: [
@@ -60,7 +71,7 @@ client.on('interactionCreate', async interaction => {
 
     if (!interaction.isChatInputCommand()) return;
 
-    // ========== PLAY ==========
+    // PLAY
     if (interaction.commandName === 'play') {
         const query = interaction.options.getString('query');
         const voiceChannel = interaction.member.voice.channel;
@@ -261,7 +272,7 @@ client.on('interactionCreate', async interaction => {
     }
 });
 
-// ========== BUTTONS ==========
+// BUTTONS
 client.on('interactionCreate', async interaction => {
     if (!interaction.isButton()) return;
 
