@@ -1,15 +1,11 @@
 // ===============================
-// DISCORD BOT - MIT DISTUBE (KORRIGIERT)
+// DISCORD BOT - MIT DISTUBE (KOMPLETT KORRIGIERT)
 // ===============================
 
 const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionsBitField, EmbedBuilder } = require('discord.js');
 const { DisTube } = require('distube');
 const { YtDlpPlugin } = require('@distube/yt-dlp');
 require('dotenv').config();
-
-// FFmpeg für Audio
-const ffmpeg = require('ffmpeg-static');
-process.env.FFMPEG_PATH = ffmpeg;
 
 const client = new Client({
     intents: [
@@ -22,11 +18,9 @@ const client = new Client({
     ]
 });
 
-// 🎵 DISTUBE MUSIK SYSTEM (KORRIGIERT - OHNE DEPRECATED OPTIONS)
+// 🎵 DISTUBE MUSIK SYSTEM - NUR MINIMALE OPTIONEN!
 const distube = new DisTube(client, {
-    plugins: [new YtDlpPlugin()],
-    searchSongs: 0,
-    nsfw: false
+    plugins: [new YtDlpPlugin()]
 });
 
 // 🎵 DISTUBE EVENTS
