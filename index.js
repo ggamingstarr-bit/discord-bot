@@ -65,19 +65,21 @@ if (interaction.isAutocomplete()) {
         return interaction.reply({ content: '❌ Du musst in einem Voice-Channel sein!', ephemeral: true });
     }
 
+    if (!query) {
+        return interaction.reply({ content: '❌ Ungültiger Song!', ephemeral: true });
+    }
+
     await interaction.deferReply();
 
     try {
-        // 🔥 Suche Song
         const results = await play.search(query, { limit: 1 });
 
-        if (!results.length) {
+        if (!results.length || !results[0].url) {
             return interaction.editReply('❌ Kein Song gefunden!');
         }
 
         const song = results[0];
 
-        // 🔥 WICHTIG: play.stream verwenden!
         const stream = await play.stream(song.url);
 
         const connection = joinVoiceChannel({
@@ -95,21 +97,14 @@ if (interaction.isAutocomplete()) {
         player.play(resource);
         connection.subscribe(player);
 
-        const embed = new EmbedBuilder()
-            .setTitle('🎵 Now Playing')
-            .setDescription(song.title)
-            .setURL(song.url)
-            .setThumbnail(song.thumbnails?.[0]?.url || null)
-            .setColor('Green');
-
-        await interaction.editReply({ embeds: [embed] });
+        await interaction.editReply(`🎵 Spiele jetzt: **${song.title}**`);
 
         player.on(AudioPlayerStatus.Idle, () => {
             connection.destroy();
         });
 
     } catch (error) {
-        console.error('Play Fehler:', error);
+        console.error("Play Fehler:", error);
         await interaction.editReply('❌ Fehler beim Abspielen!');
     }
 }
