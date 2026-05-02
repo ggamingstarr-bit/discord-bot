@@ -24,7 +24,7 @@ const client = new Client({
     ]
 });
 
-client.once('ready', () => {
+client.once('clientReady', () => {
     console.log(`✅ Online als ${client.user.tag}`);
 });
 
