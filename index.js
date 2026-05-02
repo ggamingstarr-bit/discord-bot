@@ -303,4 +303,4 @@ client.on('interactionCreate', async interaction => {
 // =========================
 // 🚀 BOT START
 // =========================
-client.login(process.env.DISCORD_TOKEN);
+client.login(process.env.TOKEN);
