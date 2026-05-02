@@ -4,6 +4,15 @@ const play = require('play-dl');
 require('dotenv').config();
 require('ffmpeg-static');
 
+// 🔥 WICHTIG
+(async () => {
+    await play.setToken({
+        youtube: {
+            cookie: ""
+        }
+    });
+})();
+
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
