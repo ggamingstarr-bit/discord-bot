@@ -29,21 +29,32 @@ client.once('ready', () => {
 });
 
 // Autocomplete für /play
-client.on('interactionCreate', async interaction => {
-    if (interaction.isAutocomplete() && interaction.commandName === 'play') {
-        const focused = interaction.options.getFocused();
-        if (focused.length < 2) return interaction.respond([]);
-        
-        try {
-            const results = await play.search(focused, { limit: 5 });
-            await interaction.respond(results.map(song => ({ name: song.title.substring(0, 100), value: song.url })));
-        } catch (error) {
-            console.error('Autocomplete Fehler:', error);
-            await interaction.respond([]);
-        }
-    }
+if (interaction.isAutocomplete()) {
+    if (interaction.commandName !== 'play') return;
 
-    if (!interaction.isChatInputCommand()) return;
+    const focused = interaction.options.getFocused();
+
+    try {
+        if (!focused || focused.length < 2) {
+            return interaction.respond([]);
+        }
+
+        const results = await play.search(focused, { limit: 5 });
+
+        const choices = results.map(song => ({
+            name: song.title.substring(0, 100),
+            value: song.url
+        }));
+
+        return interaction.respond(choices);
+
+    } catch (error) {
+        console.error("Autocomplete Fehler:", error);
+        try {
+            await interaction.respond([]);
+        } catch {}
+    }
+}
 
     // PLAY Command
     if (interaction.commandName === 'play') {
